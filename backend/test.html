@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>NL2SQL Test</title>
+</head>
+<body>
+
+<h2>Upload Files</h2>
+
+<input type="file" id="files" multiple />
+<button onclick="upload()">Upload</button>
+
+<h2>Ask Question</h2>
+
+<input type="text" id="question" style="width:400px"
+       placeholder="e.g. show total fare by city" />
+
+<button onclick="ask()">Generate SQL</button>
+
+<h3>Response</h3>
+<pre id="result"></pre>
+
+<script>
+
+async function upload() {
+    const files = document.getElementById("files").files;
+    const formData = new FormData();
+
+    for (let i = 0; i < files.length; i++) {
+        formData.append("files", files[i]);
+    }
+
+    const res = await fetch("http://127.0.0.1:8000/upload", {
+        method: "POST",
+        body: formData
+    });
+
+    const data = await res.json();
+    document.getElementById("result").textContent =
+        JSON.stringify(data, null, 2);
+}
+
+async function ask() {
+
+    const question = document.getElementById("question").value;
+
+    const formData = new FormData();
+    formData.append("question", question);
+
+    try {
+        const res = await fetch("http://127.0.0.1:8000/generate-sql", {
+            method: "POST",
+            body: formData
+        });
+
+        const data = await res.json();
+
+        document.getElementById("result").textContent =
+            JSON.stringify(data, null, 2);
+
+    } catch (err) {
+        document.getElementById("result").textContent =
+            "ERROR: " + err;
+    }
+}
+
+</script>
+
+</body>
+</html>
