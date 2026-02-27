@@ -161,7 +161,7 @@ Return ONLY JSON.
 
     try:
         response = client.chat.completions.create(
-            model="anthropic/claude-3.5-sonnet",
+            model="openai/gpt-4o-mini",
             messages=[{"role": "user", "content": prompt}],
         )
 
