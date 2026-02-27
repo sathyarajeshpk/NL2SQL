@@ -131,7 +131,7 @@ async def generate_sql(question: str = Form(...)):
     schema_text = "\n".join(schemas_global)
 
     prompt = f"""
-You are a senior data engineer.
+You are a senior data engineer. You are an expert SQL and data analytics assistant.
 
 Database schema:
 {schema_text}
@@ -176,7 +176,7 @@ Return ONLY JSON.
     try:
 
         response = client.chat.completions.create(
-            model="openrouter/auto",
+            model="anthropic/claude-3.5-sonnet",
             messages=[{"role": "user", "content": prompt}],
         )
 
