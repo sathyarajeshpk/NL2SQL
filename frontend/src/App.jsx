@@ -213,6 +213,7 @@ export default function App() {
             ✕
           </button>
         </div>
+      </aside>
 
         <button
           onClick={() => {
@@ -368,6 +369,7 @@ export default function App() {
               </div>
             </div>
           )}
+        </section>
 
           {error && (
             <div className="mx-auto mt-4 max-w-3xl rounded-2xl border border-red-300 bg-red-50 px-4 py-3 text-sm text-red-700 dark:border-red-900 dark:bg-red-950/40 dark:text-red-300">
