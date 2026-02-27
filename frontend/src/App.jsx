@@ -198,6 +198,7 @@ export default function App() {
           <div className="text-sm font-semibold">NL2SQL Assistant</div>
           <div className="mt-1 text-xs text-gray-500 dark:text-gray-400">Upload data and ask natural language questions.</div>
         </div>
+      </aside>
 
         <button
           onClick={() => setDark((prev) => !prev)}
@@ -303,6 +304,7 @@ export default function App() {
               </div>
             </div>
           )}
+        </section>
 
           {error && <div className="mx-auto mt-4 max-w-3xl rounded-lg border border-red-300 bg-red-50 px-4 py-3 text-sm text-red-700 dark:border-red-900 dark:bg-red-950/40 dark:text-red-300">{error}</div>}
         </section>
