@@ -14,7 +14,7 @@ import {
 } from "recharts";
 
 export default function App() {
-  const API = "https://backend-morning-glitter-5152.fly.dev";
+  const API = import.meta.env.VITE_API_URL;
 
   const [dark, setDark] = useState(true);
   const [files, setFiles] = useState([]);
@@ -163,11 +163,11 @@ export default function App() {
   };
 
   const activeCode =
-    tab === "sql"
-      ? format(response?.sql || "", { language: "sql" })
-      : tab === "python"
-      ? response?.python
-      : response?.pyspark;
+  tab === "sql"
+    ? response?.sql || ""
+    : tab === "python"
+    ? response?.python || ""
+    : response?.pyspark || "";
 
   return (
     <div className="flex h-screen bg-gray-100 dark:bg-gray-950 text-gray-900 dark:text-gray-100">
@@ -261,15 +261,17 @@ export default function App() {
                 </div>
 
                 <Editor
-                  height="260px"
-                  defaultLanguage={tab}
-                  value={activeCode || ""}
-                  theme={dark ? "vs-dark" : "light"}
-                  options={{
-                    readOnly: true,
-                    minimap: { enabled: false },
-                  }}
-                />
+  height="300px"
+  language={tab === "sql" ? "sql" : "python"}
+  value={activeCode || ""}
+  theme={dark ? "vs-dark" : "light"}
+  options={{
+    readOnly: true,
+    minimap: { enabled: false },
+    wordWrap: "on",
+    fontSize: 14,
+  }}
+/>
 
                 {/* Explanation */}
                 {response?.explanation && (
