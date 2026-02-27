@@ -33,7 +33,7 @@ export default function App() {
     const formData = new FormData();
     for (let f of files) formData.append("files", f);
 
-    const res = await axios.post(`${API}/upload`, formData);
+    const res = await axios.post((API || "") + "/upload", formData);
     setSchemas(res.data.schemas || []);
   };
 
@@ -46,7 +46,7 @@ export default function App() {
       const formData = new FormData();
       formData.append("question", q);
 
-      const res = await axios.post(`${API}/generate-sql`, formData);
+      const res = await axios.post((API || "") + "/generate-sql", formData);
 
       setResponse(res.data || {});
       setHistory((prev) => [q, ...prev]);
