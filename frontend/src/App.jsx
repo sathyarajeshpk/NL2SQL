@@ -230,6 +230,7 @@ export default function App() {
             </div>
           )}
           {history.map((h, i) => (
+            <aside className="w-72 flex-shrink-0 border-r border-gray-200 bg-gray-50 p-4 dark:border-gray-800 dark:bg-[#202123]">
             <button
               key={i}
               onClick={() => generate(h)}
