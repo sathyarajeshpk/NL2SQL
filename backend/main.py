@@ -7,9 +7,19 @@ import os
 from openai import OpenAI
 import sqlite3
 import json
+import re
 
 app = FastAPI()
 
+@app.get("/")
+def root():
+    return {"status": "NL2SQL API running"}
+
+@app.get("/health")
+def health():
+    return {"ok": True}
+
+# ================= CORS =================
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -18,8 +28,16 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+# ================= HEALTH =================
+@app.get("/")
+def home():
+    return {"status": "NL2SQL API running"}
+
 # ================= AI =================
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
+
+if not OPENAI_API_KEY:
+    print("⚠️ WARNING: OPENAI_API_KEY not set")
 
 client = OpenAI(
     api_key=OPENAI_API_KEY,
@@ -79,9 +97,36 @@ def execute_sql(sql: str):
         return {"error": str(e)}
 
 
+# ================= CLEAN JSON =================
+def extract_json(text: str):
+    """
+    Extract JSON safely from AI response
+    """
+    text = text.strip()
+
+    # remove markdown
+    text = text.replace("```json", "").replace("```", "").strip()
+
+    # try direct
+    try:
+        return json.loads(text)
+    except:
+        pass
+
+    # try regex extraction
+    match = re.search(r"\{.*\}", text, re.DOTALL)
+    if match:
+        return json.loads(match.group())
+
+    raise ValueError("Invalid JSON from AI")
+
+
 # ================= GENERATE =================
 @app.post("/generate-sql")
 async def generate_sql(question: str = Form(...)):
+
+    if not uploaded_tables:
+        return {"error": "No dataset uploaded"}
 
     schema_text = "\n".join(schemas_global)
 
@@ -108,21 +153,16 @@ Return JSON:
 RULES:
 
 SQL:
-- Compact
-- Clean formatting
+- Proper formatting with line breaks
 - No unnecessary aliases
-- Prefer readable joins
+- Clean readable joins
 
 Python:
 - Use pandas
 - Table names = dataframe variables
-Example:
-city = uploaded_tables["city"]
 
 PySpark:
 - Use spark dataframe names same as tables
-Example:
-city = spark.table("city")
 
 Modification:
 If INSERT/UPDATE/DELETE:
@@ -133,18 +173,19 @@ If INSERT/UPDATE/DELETE:
 Return ONLY JSON.
 """
 
-    response = client.chat.completions.create(
-        model="openrouter/auto",
-        messages=[{"role": "user", "content": prompt}],
-    )
-
-    ai_text = response.choices[0].message.content.strip()
-    ai_text = ai_text.replace("```json", "").replace("```", "").strip()
-
     try:
-        ai_json = json.loads(ai_text)
+
+        response = client.chat.completions.create(
+            model="openrouter/auto",
+            messages=[{"role": "user", "content": prompt}],
+        )
+
+        ai_text = response.choices[0].message.content
+
+        ai_json = extract_json(ai_text)
+
     except Exception as e:
-        return {"error": ai_text, "details": str(e)}
+        return {"error": str(e)}
 
     sql = ai_json.get("sql", "")
     python_code = ai_json.get("python", "")
@@ -155,7 +196,7 @@ Return ONLY JSON.
 
     result = None
 
-    if not is_mod and sql.lower().startswith("select"):
+    if sql and not is_mod and sql.lower().startswith("select"):
         result = execute_sql(sql)
 
     return {
@@ -166,3 +207,5 @@ Return ONLY JSON.
         "warning": warning,
         "result": result
     }
+
+    
