@@ -11,127 +11,149 @@ import re
 
 app = FastAPI()
 
+# ================= ROOT =================
+
 @app.get("/")
 def root():
-    return {"status": "NL2SQL API running"}
+return {"status": "NL2SQL API running"}
 
 @app.get("/health")
 def health():
-    return {"ok": True}
+return {"ok": True}
 
 # ================= CORS =================
+
 app.add_middleware(
-    CORSMiddleware,
-    allow_origins=["*"],
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
+CORSMiddleware,
+allow_origins=["*"],
+allow_credentials=True,
+allow_methods=["*"],
+allow_headers=["*"],
 )
 
-# ================= HEALTH =================
-@app.get("/")
-def home():
-    return {"status": "NL2SQL API running"}
-
 # ================= AI =================
+
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
 
 if not OPENAI_API_KEY:
-    print("⚠️ WARNING: OPENAI_API_KEY not set")
+print("⚠️ WARNING: OPENAI_API_KEY not set")
 
 client = OpenAI(
-    api_key=OPENAI_API_KEY,
-    base_url="https://openrouter.ai/api/v1"
+api_key=OPENAI_API_KEY,
+base_url="https://openrouter.ai/api/v1"
 )
 
 # ================= STORAGE =================
-uploaded_tables = {}
-schemas_global = []
 
+UPLOAD_DIR = "uploads"
+os.makedirs(UPLOAD_DIR, exist_ok=True)
+
+# ================= LOAD TABLES =================
+
+def load_tables():
+tables = {}
+schemas = []
+
+```
+for file in os.listdir(UPLOAD_DIR):  
+    path = os.path.join(UPLOAD_DIR, file)  
+
+    try:  
+        if file.endswith(".csv"):  
+            df = pd.read_csv(path)  
+        elif file.endswith(".xlsx"):  
+            df = pd.read_excel(path)  
+        elif file.endswith(".tsv"):  
+            df = pd.read_csv(path, sep="\t")  
+        else:  
+            continue  
+
+        name = file.split(".")[0]  
+        tables[name] = df  
+        schemas.append(f"{name}({', '.join(df.columns)})")  
+
+    except Exception as e:  
+        print("Error loading file:", file, e)  
+
+return tables, schemas  
+```
 
 # ================= UPLOAD =================
+
 @app.post("/upload")
 async def upload_files(files: List[UploadFile] = File(...)):
-    global uploaded_tables, schemas_global
 
-    uploaded_tables = {}
-    schemas_global = []
+```
+for file in files:  
+    content = await file.read()  
+    path = os.path.join(UPLOAD_DIR, file.filename)  
 
-    for file in files:
-        content = await file.read()
+    with open(path, "wb") as f:  
+        f.write(content)  
 
-        if file.filename.endswith(".csv"):
-            df = pd.read_csv(io.BytesIO(content))
-        elif file.filename.endswith(".xlsx"):
-            df = pd.read_excel(io.BytesIO(content))
-        elif file.filename.endswith(".tsv"):
-            df = pd.read_csv(io.BytesIO(content), sep="\t")
-        else:
-            continue
+tables, schemas = load_tables()  
 
-        table_name = file.filename.split(".")[0]
-
-        uploaded_tables[table_name] = df
-
-        columns = ", ".join(df.columns)
-        schemas_global.append(f"{table_name}({columns})")
-
-    return {
-        "message": "Files uploaded",
-        "schemas": schemas_global
-    }
-
+return {  
+    "message": "Files uploaded",  
+    "schemas": schemas  
+}  
+```
 
 # ================= SQL EXECUTION =================
+
 def execute_sql(sql: str):
 
-    conn = sqlite3.connect(":memory:")
+```
+tables, _ = load_tables()  
 
-    for name, df in uploaded_tables.items():
-        df.to_sql(name, conn, index=False, if_exists="replace")
+conn = sqlite3.connect(":memory:")  
 
-    try:
-        result_df = pd.read_sql_query(sql, conn)
-        return result_df.to_dict(orient="records")
-    except Exception as e:
-        return {"error": str(e)}
+for name, df in tables.items():  
+    df.to_sql(name, conn, index=False, if_exists="replace")  
 
+try:  
+    result_df = pd.read_sql_query(sql, conn)  
+    return result_df.to_dict(orient="records")  
+except Exception as e:  
+    return {"error": str(e)}  
+```
 
 # ================= CLEAN JSON =================
+
 def extract_json(text: str):
-    """
-    Extract JSON safely from AI response
-    """
-    text = text.strip()
+text = text.strip()
+text = text.replace("`json", "").replace("`", "").strip()
 
-    # remove markdown
-    text = text.replace("```json", "").replace("```", "").strip()
+```
+try:  
+    return json.loads(text)  
+except:  
+    pass  
 
-    # try direct
-    try:
-        return json.loads(text)
-    except:
-        pass
+match = re.search(r"\{.*\}", text, re.DOTALL)  
+if match:  
+    return json.loads(match.group())  
 
-    # try regex extraction
-    match = re.search(r"\{.*\}", text, re.DOTALL)
-    if match:
-        return json.loads(match.group())
-
-    raise ValueError("Invalid JSON from AI")
-
+raise ValueError("Invalid JSON from AI")  
+```
 
 # ================= GENERATE =================
+
 @app.post("/generate-sql")
 async def generate_sql(question: str = Form(...)):
 
-    if not uploaded_tables:
-        return {"error": "No dataset uploaded"}
+```
+tables, schemas = load_tables()  
 
-    schema_text = "\n".join(schemas_global)
+if not tables:  
+    return {"error": "No dataset uploaded"}  
 
-    prompt = f"""
-You are a senior data engineer. You are an expert SQL and data analytics assistant.
+schema_text = "\n".join(schemas)  
+
+prompt = f"""  
+```
+
+You are a senior data engineer and SQL expert.
 
 Database schema:
 {schema_text}
@@ -142,70 +164,59 @@ User question:
 Return JSON:
 
 {{
-  "sql": "",
-  "python": "",
-  "pyspark": "",
-  "explanation": "",
-  "warning": "",
-  "is_modification": false
+"sql": "",
+"python": "",
+"pyspark": "",
+"explanation": "",
+"warning": "",
+"is_modification": false
 }}
 
 RULES:
 
 SQL:
-- Proper formatting with line breaks
-- No unnecessary aliases
-- Clean readable joins
 
-Python:
-- Use pandas
-- Table names = dataframe variables
-
-PySpark:
-- Use spark dataframe names same as tables
-
-Modification:
-If INSERT/UPDATE/DELETE:
-- still generate
-- set is_modification=true
-- include warning
+* Proper formatting with line breaks
+* Prefer meaningful joins between tables
+* Do not invent columns
+* Must work in SQLite
 
 Return ONLY JSON.
 """
 
-    try:
+```
+try:  
 
-        response = client.chat.completions.create(
-            model="anthropic/claude-3.5-sonnet",
-            messages=[{"role": "user", "content": prompt}],
-        )
+    response = client.chat.completions.create(  
+        model="anthropic/claude-3.5-sonnet",  
+        messages=[{"role": "user", "content": prompt}],  
+    )  
 
-        ai_text = response.choices[0].message.content
+    ai_text = response.choices[0].message.content  
 
-        ai_json = extract_json(ai_text)
+    ai_json = extract_json(ai_text)  
 
-    except Exception as e:
-        return {"error": str(e)}
+except Exception as e:  
+    return {"error": str(e)}  
 
-    sql = ai_json.get("sql", "")
-    python_code = ai_json.get("python", "")
-    pyspark_code = ai_json.get("pyspark", "")
-    explanation = ai_json.get("explanation", "")
-    warning = ai_json.get("warning", "")
-    is_mod = ai_json.get("is_modification", False)
+sql = ai_json.get("sql", "")  
+python_code = ai_json.get("python", "")  
+pyspark_code = ai_json.get("pyspark", "")  
+explanation = ai_json.get("explanation", "")  
+warning = ai_json.get("warning", "")  
+is_mod = ai_json.get("is_modification", False)  
 
-    result = None
+result = None  
 
-    if sql and not is_mod and sql.lower().startswith("select"):
-        result = execute_sql(sql)
+if sql and not is_mod and sql.lower().startswith("select"):  
+    result = execute_sql(sql)  
 
-    return {
-        "sql": sql,
-        "python": python_code,
-        "pyspark": pyspark_code,
-        "explanation": explanation,
-        "warning": warning,
-        "result": result
-    }
-
-    
+return {  
+    "sql": sql,  
+    "python": python_code,  
+    "pyspark": pyspark_code,  
+    "explanation": explanation,  
+    "warning": warning,  
+    "result": result  
+}  
+```
