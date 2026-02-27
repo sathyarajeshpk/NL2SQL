@@ -1,0 +1,9 @@
+{
+  "name": "nl2sql",
+  "private": true,
+  "scripts": {
+    "prebuild": "npm --prefix frontend ci",
+    "build": "npm --prefix frontend run build",
+    "lint": "npm --prefix frontend run lint"
+  }
+}
