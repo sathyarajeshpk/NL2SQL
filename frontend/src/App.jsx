@@ -1,6 +1,7 @@
 import { useMemo, useState, useEffect } from "react";
 import axios from "axios";
 import Editor from "@monaco-editor/react";
+import HistoryList from "./components/HistoryList";
 import {
   BarChart,
   Bar,
@@ -178,23 +179,6 @@ export default function App() {
 
   const canAsk = useMemo(() => Boolean(schemas.length), [schemas]);
 
-  const historyContent =
-    history.length === 0 ? (
-      <div className="rounded-2xl border border-dashed border-slate-300 bg-white/60 p-3 text-xs text-slate-500 dark:border-slate-700 dark:bg-slate-800/50 dark:text-slate-400">
-        No history yet. Ask your first question.
-      </div>
-    ) : (
-      history.map((h, i) => (
-        <button
-          key={i}
-          onClick={() => generate(h)}
-          className="w-full rounded-2xl border border-transparent bg-white/90 p-3 text-left text-xs font-medium text-slate-700 shadow-sm transition hover:border-blue-200 hover:bg-white dark:bg-slate-800/80 dark:text-slate-200 dark:hover:border-slate-600 dark:hover:bg-slate-700"
-        >
-          {h}
-        </button>
-      ))
-    );
-
   return (
     <div className="relative flex min-h-screen bg-slate-100 text-slate-900 dark:bg-slate-950 dark:text-slate-100">
       <div className="pointer-events-none fixed inset-0 -z-10">
@@ -257,7 +241,7 @@ export default function App() {
         </div>
 
         <div className="space-y-2 overflow-auto pr-1" style={{ maxHeight: "calc(100vh - 255px)" }}>
-          {historyContent}
+          <HistoryList history={history} onSelect={generate} />
         </div>
       </aside>
 
