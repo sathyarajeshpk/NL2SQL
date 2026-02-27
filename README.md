@@ -1,2 +1,2 @@
-# NL2SQL
-Zero-cost natural language to SQL converter with file upload support
+# NL2CODE
+Zero-cost natural language to CODE converter with file upload support
