@@ -239,8 +239,9 @@ export default function App() {
               {h}
             </button>
           ))}
+        </aside>
         </div>
-      </aside>
+      
 
       <main className="flex min-w-0 flex-1 flex-col">
         <header className="flex items-center justify-between border-b border-slate-200/70 bg-white/70 px-4 py-4 backdrop-blur-xl dark:border-slate-700 dark:bg-slate-900/50 lg:px-6">
