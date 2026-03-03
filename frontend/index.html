@@ -2,9 +2,15 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <link rel="icon" type="image/svg+xml" href="/vite.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>frontend</title>
+    <title>NL2Code</title>
+    <script>
+      (() => {
+        const stored = localStorage.getItem("nl2code-theme");
+        const useDark = stored ? stored === "dark" : true;
+        document.documentElement.classList.toggle("dark", useDark);
+      })();
+    </script>
   </head>
   <body>
     <div id="root"></div>
