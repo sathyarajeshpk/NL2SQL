@@ -26,7 +26,6 @@ export default function Home() {
   const [loading, setLoading] = useState(false);
   const [response, setResponse] = useState(null);
   const [toast, setToast] = useState("");
-  const [codeTab, setCodeTab] = useState("sql");
 
   useEffect(() => {
     const initialDark = document.documentElement.classList.contains("dark");
@@ -39,18 +38,6 @@ export default function Home() {
   }, [dark]);
 
   const outputFiles = useMemo(() => normalizeFiles(response), [response]);
-
-  const classicTabs = useMemo(
-    () => [
-      { key: "sql", label: "SQL", files: [{ filename: "query.sql", language: "sql", content: response?.sql || "" }] },
-      { key: "python", label: "Python", files: [{ filename: "main.py", language: "python", content: response?.python || "" }] },
-      { key: "pyspark", label: "PySpark", files: [{ filename: "pipeline.py", language: "python", content: response?.pyspark || "" }] },
-      { key: "files", label: "Multi-file", files: outputFiles },
-    ],
-    [response?.sql, response?.python, response?.pyspark, outputFiles]
-  );
-
-  const activeView = classicTabs.find((tab) => tab.key === codeTab) || classicTabs[0];
 
   const uploadFiles = async () => {
     if (!filesToUpload.length) return;
@@ -72,15 +59,8 @@ export default function Home() {
       form.append("mode", fixMode ? "fix" : "generate");
       const res = await axios.post(`${API}/generate-sql`, form);
       setResponse(res.data || {});
-      setCodeTab("sql");
-      if (res.data?.error) {
-        setToast(res.data.error);
-      }
-    } catch {
-      setToast("Failed to generate code.");
     } finally {
       setLoading(false);
-      setTimeout(() => setToast(""), 1800);
     }
   };
 
@@ -90,17 +70,14 @@ export default function Home() {
       <Navbar dark={dark} onToggleTheme={() => setDark((d) => !d)} />
 
       <main className="mx-auto w-full max-w-7xl px-4 py-6">
+        <div className="mb-4 flex flex-wrap items-center gap-2 text-xs text-slate-400">
+          <span>NL2Code</span><span>•</span><span>Modern AI coding assistant</span>
+        </div>
+
         <section className="glass-card mb-4 p-4">
           <div className="flex flex-wrap items-center gap-3">
-            <input
-              type="file"
-              multiple
-              onChange={(e) => setFilesToUpload(Array.from(e.target.files || []))}
-              className="rounded-lg border border-white/15 bg-slate-900/70 px-3 py-2 text-xs"
-            />
-            <button onClick={uploadFiles} className="rounded-lg border border-white/20 bg-white/10 px-3 py-2 text-xs hover:bg-white/20">
-              Upload Datasets
-            </button>
+            <input type="file" multiple onChange={(e) => setFilesToUpload(Array.from(e.target.files || []))} className="rounded-lg border border-white/15 bg-slate-900/70 px-3 py-2 text-xs" />
+            <button onClick={uploadFiles} className="rounded-lg border border-white/20 bg-white/10 px-3 py-2 text-xs hover:bg-white/20">Upload Datasets</button>
             {schemas.length > 0 && <p className="text-xs text-cyan-200">{schemas.join(", ")}</p>}
           </div>
         </section>
@@ -116,26 +93,7 @@ export default function Home() {
           onFixModeChange={setFixMode}
         />
 
-        {response && (
-          <section className="mt-6 space-y-4">
-            <div className="flex flex-wrap gap-2">
-              {classicTabs.map((tab) => (
-                <button
-                  key={tab.key}
-                  onClick={() => setCodeTab(tab.key)}
-                  className={`rounded-lg px-3 py-1.5 text-xs font-medium transition ${
-                    codeTab === tab.key ? "bg-cyan-500/25 text-cyan-100" : "bg-white/5 text-slate-300 hover:bg-white/10"
-                  }`}
-                >
-                  {tab.label}
-                </button>
-              ))}
-            </div>
-
-            <CodeViewer key={`${codeTab}-${activeView.files.map((f) => f.filename).join("|")}`} files={activeView.files} loading={loading} onCopySuccess={setToast} />
-          </section>
-        )}
-
+        {outputFiles.length > 0 && <div className="mt-6"><CodeViewer files={outputFiles} loading={loading} onCopySuccess={setToast} /></div>}
         <ExplanationPanel text={response?.explanation} />
 
         <footer className="mt-8 border-t border-white/10 py-4 text-xs text-slate-400">Built with care for Indian SaaS builders • Creator: NL2Code Team</footer>
