@@ -121,7 +121,7 @@ def extract_json(text: str):
 # ================= GENERATE =================
 
 @app.post("/generate-sql")
-async def generate_sql(question: str = Form(...)):
+async def generate_sql(question: str = Form(...), language: str = Form("Auto detect"), mode: str = Form("generate")):
 
     if not schemas_global:
         return {"error": "No dataset uploaded"}
@@ -129,34 +129,36 @@ async def generate_sql(question: str = Form(...)):
     schema_text = "\n".join(schemas_global)
 
     prompt = f"""
-You are a senior data engineer.
+You are a senior AI software engineer.
+Generate production-ready code from the user request and schema context.
 
-Database schema:
+Database schema (if relevant):
 {schema_text}
 
+Requested language: {language}
+Mode: {mode}
 User question:
 {question}
 
-Return JSON:
-
+Return ONLY JSON in this exact structure:
 {{
+  "files": [
+    {{ "filename": "", "language": "", "content": "" }}
+  ],
+  "explanation": "",
   "sql": "",
   "python": "",
   "pyspark": "",
-  "explanation": "",
   "warning": "",
   "is_modification": false
 }}
 
-RULES:
-
-SQL:
-- Proper formatting
-- Use correct joins
-- No hallucinated columns
-- Only use given schema
-
-Return ONLY JSON.
+Rules:
+- Keep code clean and runnable with useful comments.
+- Include setup instructions in explanation.
+- Follow best practices and avoid unnecessary text.
+- If SQL is requested, stay strictly within available schema.
+- Prefer filling files[]; keep sql/python/pyspark for compatibility.
 """
 
     try:
@@ -171,6 +173,7 @@ Return ONLY JSON.
     except Exception as e:
         return {"error": str(e)}
 
+    files = ai_json.get("files", [])
     sql = ai_json.get("sql", "")
     python_code = ai_json.get("python", "")
     pyspark_code = ai_json.get("pyspark", "")
@@ -183,7 +186,16 @@ Return ONLY JSON.
     if sql and not is_mod and sql.lower().startswith("select"):
         result = execute_sql(sql)
 
+    if not files:
+        if sql:
+            files.append({"filename": "query.sql", "language": "sql", "content": sql})
+        if python_code:
+            files.append({"filename": "main.py", "language": "python", "content": python_code})
+        if pyspark_code:
+            files.append({"filename": "pipeline.py", "language": "python", "content": pyspark_code})
+
     return {
+        "files": files,
         "sql": sql,
         "python": python_code,
         "pyspark": pyspark_code,
